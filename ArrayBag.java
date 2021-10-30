@@ -1,17 +1,22 @@
 //TODO gotta import stuff here
 import java.util.Iterator;
+//import java.util.Arrays;
+import java.util.Random;
 import java.util.ConcurrentModificationException;
 
-public class ArrayBag<E> implements BagInterface{
+public class ArrayBag<E> implements BagInterface<E>, Iterable<E>{
 	
 	//Same code from ArrayThing
-	int size;
-	E[] bag;
-	long concurrentModificationCounter;
+	private int size;
+	private int elem;
+	private E[] bag;
+	private long concurrentModificationCounter;
+	private Random ran = new Random();
 	
 	@SuppressWarnings("unchecked")
 	public ArrayBag() {
-		size = 0;
+		size = DEFAULT_CAPACITY;
+		elem = 0;
 		bag = (E[]) new Object[DEFAULT_CAPACITY];
 	}
 	
@@ -20,13 +25,7 @@ public class ArrayBag<E> implements BagInterface{
 	 */
 	@Override
 	public int getCurrentSize() {
-		// TODO Fix this pseudo code
-		int counter = 0;
-		
-		for(Object elem : bag) {
-			counter++;
-		}
-		return 0;
+		return size;
 	}
 
 	/* Checks whether this bag is empty.
@@ -34,9 +33,7 @@ public class ArrayBag<E> implements BagInterface{
 	 */
 	@Override
 	public boolean isEmpty() {
-		// TODO Fix pseudo code
-		
-		if(bag == null) {
+		if(bag == null || bag[0] == null) {
 			return true;
 		} else {
 			return false;
@@ -50,25 +47,38 @@ public class ArrayBag<E> implements BagInterface{
 	@SuppressWarnings("unchecked")
 	@Override
 	public boolean add(Object newEntry) {
-		// TODO Fix code here
-		//Check if item fits within index
-		bag[size] = (E) newEntry;
-		size++;
-		return true;
-		
-		//return false;
+		if(isEmpty()) {
+			size = DEFAULT_CAPACITY;
+			bag = (E[]) new Object[DEFAULT_CAPACITY];
+			bag[elem] = (E) newEntry;
+			elem++;
+			return true;
+		} else if(elem == size) {
+			extend();
+			bag[elem] = (E) newEntry;
+			elem++;
+			return true;
+		} else if(elem < size) {
+			bag[elem] = (E) newEntry;
+			elem++;
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	/* Remove one unspecified entry from this bag, if possible.
 	 * @return  Either the removed entry if successful, null otherwise.
 	 */
 	@Override
-	public Object remove() {
-		// TODO Fix pseudo code + add real code
+	public E remove() {
+		int index = ran.nextInt(elem);
+		E obj;
+		
 		if(!isEmpty()) {
-			//Remove 'unspecified' entry and return it
-			//I am assuming that this function is the same as .get(index) from ArrayThing
-			return bag[size];
+			obj = bag[index];
+			patch(index);
+			return obj;
 		} else {
 			return null;
 		}
@@ -80,14 +90,13 @@ public class ArrayBag<E> implements BagInterface{
 	 */
 	@Override
 	public boolean remove(Object anEntry) {
-		// TODO Fix pseudo code + add real code
 		if(contains(anEntry)) {
-			//Remove anEntry from bag
-			
-			//Need to find index of anEntry. patch() will close the null hole
-			//bag[index] = null;
-			//patch()
-			
+			for(int i = 0; i < elem; i++) {
+				if(bag[i].equals(anEntry)) {
+					patch(i);
+					break;
+				}
+			}
 			return true;
 		} else {
 			return false;
@@ -98,11 +107,9 @@ public class ArrayBag<E> implements BagInterface{
 	 */
 	@Override
 	public void clear() {
-		// TODO implement method
-		
-		//Use for loop?
-		//What happens if I just set the whole bag = null?
-		
+		bag = null;
+		size = 0;
+		elem = 0;
 	}
 
 	/* Counts the number of times a given entry appears in this bag.
@@ -111,11 +118,10 @@ public class ArrayBag<E> implements BagInterface{
 	 */
 	@Override
 	public int getFrequencyOf(Object anEntry) {
-		// TODO Fix pseudo code
 		int counter = 0;
 		
-		for(int i = 0; i < bag.length; i++) {
-			if(bag[i] == anEntry) {
+		for(int i = 0; i < elem; i++) {
+			if(bag[i].equals(anEntry)) {
 				counter++;
 			}
 		}
@@ -129,14 +135,12 @@ public class ArrayBag<E> implements BagInterface{
 	 */
 	@Override
 	public boolean contains(Object anEntry) {
-		// TODO Fix pseudo code
 		boolean exists = false;
 		
-		for(int i = 0; i < bag.length; i++) {
-			if(bag[i] == anEntry) {
+		for(int i = 0; i < elem; i++) {
+			if(bag[i].equals(anEntry)) {
 				exists = true;
 				break;
-				//Check to see if break actually works. I really gotta learn how to use this...
 			}
 		}
 		
@@ -147,20 +151,44 @@ public class ArrayBag<E> implements BagInterface{
 	 * @return  A newly allocated array of all the entries in this bag.
 	 *          If the bag is empty, returns an empty array.
 	 */
+	@SuppressWarnings("unchecked")
 	@Override
-	public Object[] toArray() {
-		// TODO Fix pseudo code + add real code
-		Object freshArr[] = new Object[bag.length];
+	public E[] toArray() {
+		Object freshArr[] = new Object[elem];
 		if(!isEmpty()) {
-			//Fill freshArr with all elems from bag using enhanced for-loop
+			for(int i = 0; i < elem; i++) {
+				freshArr[i] = bag[i];
+			}
 		} else {
 			freshArr = null;
 		}
-		return freshArr;
+		return (E[]) freshArr;
 	}
 	
-	//TODO make extend() to make array bigger/infinite
-	//TODO make patch() to adjust array when an item is removed
+	//Makes array bigger/infinite
+	@SuppressWarnings("unchecked")
+	public void extend() {
+		E temp[] = null;
+		if(elem == size) {
+			temp = (E[]) new Object[getCurrentSize() * 2]; 
+			{
+				for(int i = 0; i < size; i++) {
+					temp[i] = bag[i];
+				}
+			}
+			
+		}
+		
+		bag = temp;
+		size *= 2;
+	}
+	
+	//Puts last element in hole
+	public void patch(int index) {
+		bag[index] = bag[elem - 1];
+		bag[elem - 1] = null;
+		elem--;
+	}
 	
 	//Code is taken directly from ArrayThing. I need an Iterator for some reason
 	//TODO Figure out what Iterator is used for. Something about counting things?
